@@ -395,9 +395,78 @@ async function getApproval(approvalId, actor) {
   };
 }
 
+async function getApprovals(filters, actor) {
+  const page = Math.max(1, parseInt(filters.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(filters.limit, 10) || 10));
+  const offset = (page - 1) * limit;
+
+  const queryParams = [];
+  const clauses = [];
+
+  if (filters.status) {
+    queryParams.push(String(filters.status).toUpperCase());
+    clauses.push(`a.status = $${queryParams.length}`);
+  }
+
+  const whereClause = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
+
+  const countResult = await pool.query(
+    `SELECT COUNT(*)::int AS total FROM approvals a ${whereClause};`,
+    queryParams
+  );
+  const total = countResult.rows[0].total;
+
+  queryParams.push(limit, offset);
+  const result = await pool.query(
+    `
+      SELECT
+        a.id AS approval_id,
+        a.quotation_id,
+        a.status AS approval_status,
+        a.remarks,
+        a.approved_at,
+        a.created_at,
+        u.full_name AS manager_name,
+        q.rfq_id,
+        q.price,
+        v.company_name AS vendor_name,
+        r.title AS rfq_title
+      FROM approvals a
+      LEFT JOIN users u ON u.id = a.manager_id
+      JOIN quotations q ON q.id = a.quotation_id
+      JOIN vendors v ON v.id = q.vendor_id
+      JOIN rfqs r ON r.id = q.rfq_id
+      ${whereClause}
+      ORDER BY a.created_at DESC
+      LIMIT $${queryParams.length - 1} OFFSET $${queryParams.length};
+    `,
+    queryParams
+  );
+
+  return {
+    total,
+    page,
+    limit,
+    approvals: result.rows.map(row => ({
+      id: row.approval_id,
+      quotation_id: row.quotation_id,
+      rfq_id: row.rfq_id,
+      rfq_title: row.rfq_title,
+      status: row.approval_status,
+      remarks: row.remarks,
+      approved_at: row.approved_at,
+      created_at: row.created_at,
+      manager_name: row.manager_name,
+      price: Number(row.price),
+      vendor_name: row.vendor_name
+    }))
+  };
+}
+
 module.exports = {
   createApproval,
   approveApproval,
   rejectApproval,
   getApproval,
+  getApprovals,
 };

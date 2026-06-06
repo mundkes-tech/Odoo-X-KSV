@@ -9,13 +9,13 @@ router.use(authMiddleware);
 
 router.get(
   '/activity-logs',
-  authorizeRoles('ADMIN', 'MANAGER'),
+  authorizeRoles('ADMIN', 'MANAGER', 'VENDOR'),
   reportController.activityLogs
 );
 
 router.get(
   '/activity-logs/:id',
-  authorizeRoles('ADMIN', 'MANAGER'),
+  authorizeRoles('ADMIN', 'MANAGER', 'VENDOR'),
   reportController.activityLogById
 );
 
