@@ -3,6 +3,7 @@ const {
   approveApproval,
   rejectApproval,
   getApproval,
+  getApprovals,
 } = require('../services/approvalService');
 
 async function create(req, res, next) {
@@ -61,9 +62,23 @@ async function getById(req, res, next) {
   }
 }
 
+async function list(req, res, next) {
+  try {
+    const result = await getApprovals(req.query || {}, req.user);
+    return res.status(200).json({
+      success: true,
+      message: 'Approval requests fetched successfully.',
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   create,
   approve,
   reject,
   getById,
+  list,
 };

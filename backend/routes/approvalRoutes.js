@@ -14,6 +14,13 @@ router.post(
   approvalController.create
 );
 
+// GET /approvals — List Approval Requests (Manager, Procurement Officer, Admin)
+router.get(
+  '/approvals',
+  authorizeRoles('MANAGER', 'PROCUREMENT_OFFICER', 'ADMIN'),
+  approvalController.list
+);
+
 // PATCH /approvals/:id/approve — Approve Request (Manager only)
 router.patch(
   '/approvals/:id/approve',
