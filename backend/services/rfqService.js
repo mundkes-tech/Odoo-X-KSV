@@ -1,7 +1,7 @@
 const { pool } = require('../config/db');
 const { createHttpError } = require('./vendorService');
 
-const ALLOWED_RFQ_STATUSES = ['DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED'];
+const ALLOWED_RFQ_STATUSES = ['DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED', 'VENDOR_SELECTED'];
 const DEFAULT_LIMIT = 10;
 const MAX_LIMIT = 100;
 
