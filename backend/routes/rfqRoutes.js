@@ -13,7 +13,7 @@ router.get('/rfqs/:id', authorizeRoles('ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER'
 router.put('/rfqs/:id', authorizeRoles('PROCUREMENT_OFFICER'), rfqController.update);
 router.delete('/rfqs/:id', authorizeRoles('ADMIN'), rfqController.remove);
 router.post('/rfqs/:id/assign-vendors', authorizeRoles('PROCUREMENT_OFFICER'), rfqController.assignVendors);
-router.get('/rfqs/:id/vendors', authorizeRoles('ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER', 'VENDOR'), rfqController.listVendors);
+router.get('/rfqs/:id/vendors', authorizeRoles('ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER'), rfqController.listVendors);
 router.get('/vendors/:vendorId/rfqs', authorizeRoles('ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER', 'VENDOR'), rfqController.listVendorRfqs);
 
 module.exports = router;
