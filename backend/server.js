@@ -8,6 +8,7 @@ const rfqRoutes = require('./routes/rfqRoutes');
 const quotationRoutes = require('./routes/quotationRoutes');
 const comparisonRoutes = require('./routes/comparisonRoutes');
 const approvalRoutes = require('./routes/approvalRoutes');
+const purchaseOrderRoutes = require('./routes/purchaseOrderRoutes');
 
 const logger = require('./utils/logger');
 const { testConnection, initializeDatabase, pool } = require('./config/db');
@@ -46,6 +47,7 @@ app.use('/', rfqRoutes);
 app.use('/quotations', quotationRoutes);
 app.use('/', comparisonRoutes);
 app.use('/', approvalRoutes);
+app.use('/', purchaseOrderRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({
