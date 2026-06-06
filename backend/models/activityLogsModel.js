@@ -18,6 +18,8 @@ async function createActivityLogsTable(pool) {
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_user_id ON activity_logs (user_id);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_entity ON activity_logs (entity_type, entity_id);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_action ON activity_logs (action);');
+  await pool.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_entity_type ON activity_logs (entity_type);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_activity_logs_created_at ON activity_logs (created_at);');
 }
 
