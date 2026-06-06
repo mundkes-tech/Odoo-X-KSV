@@ -2,6 +2,7 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const authRoutes = require('./routes/authRoutes');
 
 const logger = require('./utils/logger');
 const { testConnection, initializeDatabase, pool } = require('./config/db');
@@ -17,6 +18,8 @@ app.use(
 );
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
+
+app.use('/auth', authRoutes);
 
 app.get('/health', async (req, res, next) => {
 	try {
@@ -42,13 +45,18 @@ app.use((req, res) => {
 
 app.use((error, req, res, next) => {
 	logger.error('Unhandled application error.', {
+		path: req.originalUrl,
+		method: req.method,
 		message: error.message,
 		stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
 	});
 
-	res.status(error.statusCode || 500).json({
+	const statusCode = error.statusCode || 500;
+
+	res.status(statusCode).json({
 		success: false,
 		message: error.message || 'Internal server error.',
+		error_code: statusCode,
 	});
 });
 

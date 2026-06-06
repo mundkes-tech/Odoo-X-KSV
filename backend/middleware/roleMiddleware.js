@@ -1,5 +1,11 @@
-function roleMiddleware(...allowedRoles) {
-  const normalizedRoles = allowedRoles.map((role) => String(role).toUpperCase());
+function authorizeRoles(...allowedRoles) {
+  const normalizedRoles = allowedRoles
+    .filter((role) => role !== undefined && role !== null)
+    .map((role) => String(role).trim().toUpperCase());
+
+  if (normalizedRoles.length === 0) {
+    throw new Error('authorizeRoles requires at least one allowed role.');
+  }
 
   return (req, res, next) => {
     const userRole = req.user && req.user.role ? String(req.user.role).toUpperCase() : null;
@@ -15,4 +21,5 @@ function roleMiddleware(...allowedRoles) {
   };
 }
 
-module.exports = roleMiddleware;
+module.exports = authorizeRoles;
+module.exports.authorizeRoles = authorizeRoles;
