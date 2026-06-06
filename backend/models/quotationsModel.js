@@ -27,14 +27,14 @@ async function createQuotationsTable(pool) {
   await pool.query(`
     UPDATE quotations
     SET status = 'SUBMITTED'
-    WHERE status NOT IN ('DRAFT', 'SUBMITTED', 'WITHDRAWN', 'SELECTED', 'REJECTED');
+    WHERE status NOT IN ('DRAFT', 'SUBMITTED', 'WITHDRAWN', 'SELECTED', 'REJECTED', 'APPROVED');
   `);
 
   await pool.query('ALTER TABLE quotations DROP CONSTRAINT IF EXISTS quotations_status_check;');
   await pool.query(`
     ALTER TABLE quotations
     ADD CONSTRAINT quotations_status_check
-    CHECK (status IN ('DRAFT', 'SUBMITTED', 'WITHDRAWN', 'SELECTED', 'REJECTED'));
+    CHECK (status IN ('DRAFT', 'SUBMITTED', 'WITHDRAWN', 'SELECTED', 'REJECTED', 'APPROVED'));
   `);
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations (status);');

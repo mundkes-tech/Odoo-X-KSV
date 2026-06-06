@@ -3,7 +3,7 @@ async function createApprovalsTable(pool) {
     CREATE TABLE IF NOT EXISTS approvals (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       quotation_id UUID NOT NULL,
-      manager_id UUID NOT NULL,
+      manager_id UUID,
       status VARCHAR(30) NOT NULL DEFAULT 'PENDING' CHECK (status IN ('PENDING', 'APPROVED', 'REJECTED')),
       remarks TEXT,
       approved_at TIMESTAMPTZ,
@@ -17,10 +17,17 @@ async function createApprovalsTable(pool) {
         FOREIGN KEY (manager_id)
         REFERENCES users (id)
         ON DELETE RESTRICT
-        ON UPDATE CASCADE,
-      CONSTRAINT uq_approvals_quotation_manager UNIQUE (quotation_id, manager_id)
+        ON UPDATE CASCADE
     );
   `);
+
+  // Drop old unique constraint if exists, and make manager_id nullable
+  await pool.query('ALTER TABLE approvals ALTER COLUMN manager_id DROP NOT NULL;');
+  await pool.query('ALTER TABLE approvals DROP CONSTRAINT IF EXISTS uq_approvals_quotation_manager;');
+  
+  // Create a unique constraint on quotation_id so only one approval request exists per quotation
+  await pool.query('ALTER TABLE approvals DROP CONSTRAINT IF EXISTS uq_approvals_quotation;');
+  await pool.query('ALTER TABLE approvals ADD CONSTRAINT uq_approvals_quotation UNIQUE (quotation_id);');
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_approvals_status ON approvals (status);');
   await pool.query('CREATE INDEX IF NOT EXISTS idx_approvals_quotation_id ON approvals (quotation_id);');
