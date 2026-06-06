@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 
 const express = require('express');
 const cors = require('cors');
@@ -13,6 +13,7 @@ const reportRoutes = require('./routes/reportRoutes');
 const notificationRoutes = require('./routes/notificationRoutes');
 const pdfRoutes = require('./routes/pdfRoutes');
 const emailRoutes = require('./routes/emailRoutes');
+const invoiceRoutes = require('./routes/invoiceRoutes');
 
 const logger = require('./utils/logger');
 const { testConnection, initializeDatabase, pool } = require('./config/db');
@@ -56,6 +57,7 @@ app.use('/', pdfRoutes);
 app.use('/', emailRoutes);
 app.use('/', notificationRoutes);
 app.use('/', reportRoutes);
+app.use('/', invoiceRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({
