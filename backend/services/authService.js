@@ -177,6 +177,44 @@ async function getUserProfileById(userId) {
   return sanitizeUserRow(user);
 }
 
+async function getAllUsers() {
+  const result = await pool.query(
+    `SELECT id, full_name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC;`
+  );
+  return result.rows.map(sanitizeUserRow);
+}
+
+async function updateUserById(userId, payload) {
+  const { full_name, email, role, is_active } = payload;
+  const result = await pool.query(
+    `UPDATE users 
+     SET full_name = COALESCE($2, full_name),
+         email = COALESCE($3, email),
+         role = COALESCE($4, role),
+         is_active = COALESCE($5, is_active),
+         updated_at = NOW()
+     WHERE id = $1
+     RETURNING id, full_name, email, role, is_active, created_at, updated_at;`,
+    [userId, full_name, email, role, is_active]
+  );
+  if (result.rowCount === 0) {
+    throw createHttpError(404, 'User not found.');
+  }
+  return sanitizeUserRow(result.rows[0]);
+}
+
+async function resetUserPasswordById(userId, newPassword) {
+  const passwordHash = await bcrypt.hash(newPassword, SALT_ROUNDS);
+  const result = await pool.query(
+    `UPDATE users SET password_hash = $2, updated_at = NOW() WHERE id = $1 RETURNING id;`,
+    [userId, passwordHash]
+  );
+  if (result.rowCount === 0) {
+    throw createHttpError(404, 'User not found.');
+  }
+  return { success: true };
+}
+
 module.exports = {
   ALLOWED_ROLES,
   createHttpError,
@@ -184,4 +222,8 @@ module.exports = {
   registerUser,
   loginUser,
   getUserProfileById,
+  getAllUsers,
+  updateUserById,
+  resetUserPasswordById,
 };
+
