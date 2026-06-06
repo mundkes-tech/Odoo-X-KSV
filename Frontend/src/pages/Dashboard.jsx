@@ -41,7 +41,7 @@ import VendorQuotations from '../components/vendor/VendorQuotations';
 import VendorRfqTracking from '../components/vendor/VendorRfqTracking';
 import VendorPurchaseOrders from '../components/vendor/VendorPurchaseOrders';
 import VendorNotifications from '../components/vendor/VendorNotifications';
-import VendorActivityLogs from '../components/vendor/VendorActivityLogs';
+// VendorActivityLogs removed from imports: vendors must not access activity logs per RBAC
 import VendorProfile from '../components/vendor/VendorProfile';
 
 // --- INITIAL SEED DATABASES (FALLBACKS) ---
@@ -285,8 +285,13 @@ export default function Dashboard() {
       console.warn("Failed to fetch invoices from backend", err);
     }
 
+<<<<<<< HEAD
     // 6. Fetch Logs (Admin, Manager, Procurement Officer, or Vendor)
     if (isAdmin || isManager || isProcurementOfficer || isVendor) {
+=======
+    // 6. Fetch Logs (Admin, Manager or Procurement Officer)
+    if (isAdmin || isManager || isProcurementOfficer) {
+>>>>>>> 511d618 (chore: remove plaintext SMTP secrets and document secure env setup)
       try {
         const res = await fetch(`${API_BASE}/activity-logs?limit=100`, { headers });
         const data = await res.json();
@@ -732,7 +737,6 @@ export default function Dashboard() {
                     { id: 'vendor-tracking', name: 'Track RFQs', icon: Activity },
                     { id: 'vendor-pos', name: 'Purchase Orders', icon: FileSpreadsheet },
                     { id: 'vendor-notifications', name: 'Notifications', icon: Bell },
-                    { id: 'vendor-logs', name: 'Activity Logs', icon: Clock },
                     { id: 'vendor-profile', name: 'My Profile', icon: User },
                   ].map((item) => {
                     const Icon = item.icon;
@@ -1121,9 +1125,7 @@ export default function Dashboard() {
               />
             )}
 
-            {isVendor && activeTab === 'vendor-logs' && (
-              <VendorActivityLogs logs={logs} />
-            )}
+            {/* Vendor activity logs removed from vendor UI to prevent access to audit logs */}
 
             {isVendor && activeTab === 'vendor-profile' && (
               <VendorProfile
