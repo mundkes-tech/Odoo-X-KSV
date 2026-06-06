@@ -5,6 +5,7 @@ const cors = require('cors');
 const authRoutes = require('./routes/authRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const rfqRoutes = require('./routes/rfqRoutes');
+const quotationRoutes = require('./routes/quotationRoutes');
 
 const logger = require('./utils/logger');
 const { testConnection, initializeDatabase, pool } = require('./config/db');
@@ -40,6 +41,7 @@ app.get('/health', async (req, res, next) => {
 });
 
 app.use('/', rfqRoutes);
+app.use('/quotations', quotationRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({
