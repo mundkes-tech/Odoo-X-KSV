@@ -13,4 +13,10 @@ router.get('/admin-only', authMiddleware, authorizeRoles('ADMIN'), authControlle
 router.get('/manager-only', authMiddleware, authorizeRoles('MANAGER'), authController.managerOnly);
 router.get('/vendor-only', authMiddleware, authorizeRoles('VENDOR'), authController.vendorOnly);
 
+// User Management (Admin only)
+router.get('/users', authMiddleware, authorizeRoles('ADMIN'), authController.listUsers);
+router.put('/users/:id', authMiddleware, authorizeRoles('ADMIN'), authController.updateUser);
+router.put('/users/:id/reset-password', authMiddleware, authorizeRoles('ADMIN'), authController.resetPassword);
+
 module.exports = router;
+
