@@ -355,9 +355,7 @@ export default function Dashboard() {
     // 10. Fetch Vendor's assigned RFQs (Vendor only)
     if (isVendor && user?.id) {
       try {
-        // Try fetching RFQs assigned to this vendor via the vendor-rfqs endpoint
-        // The backend matches vendor by user email to vendor email
-        const res = await fetch(`${API_BASE}/vendors/${user.id}/rfqs`, { headers });
+        const res = await fetch(`${API_BASE}/vendors/me/rfqs`, { headers });
         const data = await res.json();
         if (res.ok && data.success && data.rfqs) {
           setVendorRfqs(data.rfqs);
@@ -621,8 +619,8 @@ export default function Dashboard() {
       <div className="flex flex-1">
         
         {/* Sidebar Navigation */}
-        <aside className="w-68 bg-white border-r border-slate-200 hidden md:flex flex-col justify-between p-5 z-20 shrink-0">
-          <div className="space-y-6">
+        <aside className="w-68 h-[calc(100vh-4.5rem)] bg-white border-r border-slate-200 hidden md:flex flex-col p-5 z-20 shrink-0 sticky top-[4.5rem] overflow-hidden">
+          <div className="min-h-0 flex-1 overflow-y-auto pr-1 pb-4">
             <div className="space-y-1.5">
               
               {/* ADMIN SIDEBAR LINKS */}
@@ -785,7 +783,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="space-y-4 pt-4 border-t border-slate-100">
+          <div className="shrink-0 space-y-3 pt-4 border-t border-slate-100 bg-white">
             <button 
               onClick={() => alert("VendorBridge ERP v1.0.0 Help Center. Contact admin@vendorbridge.com for technical support.")}
               className="w-full flex items-center gap-3.5 px-4 py-3 text-slate-550 hover:text-slate-900 text-base font-extrabold rounded-xl transition duration-200 cursor-pointer"
