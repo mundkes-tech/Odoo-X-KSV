@@ -285,13 +285,8 @@ export default function Dashboard() {
       console.warn("Failed to fetch invoices from backend", err);
     }
 
-<<<<<<< HEAD
-    // 6. Fetch Logs (Admin, Manager, Procurement Officer, or Vendor)
-    if (isAdmin || isManager || isProcurementOfficer || isVendor) {
-=======
-    // 6. Fetch Logs (Admin, Manager or Procurement Officer)
+  // 6. Fetch Logs (Admin, Manager or Procurement Officer)
     if (isAdmin || isManager || isProcurementOfficer) {
->>>>>>> 511d618 (chore: remove plaintext SMTP secrets and document secure env setup)
       try {
         const res = await fetch(`${API_BASE}/activity-logs?limit=100`, { headers });
         const data = await res.json();

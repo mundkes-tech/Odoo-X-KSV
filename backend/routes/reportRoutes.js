@@ -9,23 +9,13 @@ router.use(authMiddleware);
 
 router.get(
   '/activity-logs',
-<<<<<<< HEAD
-  authorizeRoles('ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER', 'VENDOR'),
-=======
-  // Allow ADMIN, MANAGER and PROCUREMENT_OFFICER to view activity logs
   authorizeRoles('ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER'),
->>>>>>> 511d618 (chore: remove plaintext SMTP secrets and document secure env setup)
   reportController.activityLogs
 );
 
 router.get(
   '/activity-logs/:id',
-<<<<<<< HEAD
-  authorizeRoles('ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER', 'VENDOR'),
-=======
-  // Allow ADMIN, MANAGER and PROCUREMENT_OFFICER to view activity logs
   authorizeRoles('ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER'),
->>>>>>> 511d618 (chore: remove plaintext SMTP secrets and document secure env setup)
   reportController.activityLogById
 );
 
