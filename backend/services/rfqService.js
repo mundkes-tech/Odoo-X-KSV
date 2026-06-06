@@ -33,6 +33,24 @@ function sanitizeRfqRow(row) {
   };
 }
 
+function sanitizeVendorRfqRow(row) {
+  if (!row) {
+    return null;
+  }
+
+  return {
+    id: row.id,
+    title: row.title,
+    description: row.description,
+    quantity: Number(row.quantity),
+    deadline: row.deadline,
+    attachment_url: row.attachment_url,
+    status: row.status,
+    created_at: row.created_at,
+    updated_at: row.updated_at,
+  };
+}
+
 function sanitizeAssignedVendorRow(row) {
   if (!row) {
     return null;
@@ -321,6 +339,7 @@ async function getRfqById(rfqId, actor) {
   const client = await pool.connect();
 
   try {
+    const isVendor = actor && String(actor.role).toUpperCase() === 'VENDOR';
     await ensureVendorUserCanAccessRfq(client, rfqId, actor);
 
     const result = await client.query(
@@ -337,7 +356,7 @@ async function getRfqById(rfqId, actor) {
       throw createHttpError(404, 'RFQ not found.');
     }
 
-    return sanitizeRfqRow(result.rows[0]);
+    return isVendor ? sanitizeVendorRfqRow(result.rows[0]) : sanitizeRfqRow(result.rows[0]);
   } finally {
     client.release();
   }
@@ -588,7 +607,9 @@ async function getRfqVendors(rfqId, actor) {
   const client = await pool.connect();
 
   try {
-    await ensureVendorUserCanAccessRfq(client, rfqId, actor);
+    if (actor && String(actor.role).toUpperCase() === 'VENDOR') {
+      throw createHttpError(403, 'Vendors cannot view RFQ vendor assignment details.');
+    }
 
     const rfqResult = await client.query('SELECT id FROM rfqs WHERE id = $1 LIMIT 1;', [rfqId]);
     if (rfqResult.rowCount === 0) {
@@ -628,6 +649,7 @@ async function getVendorRfqs(vendorId, actor) {
   const client = await pool.connect();
 
   try {
+    const isVendor = actor && String(actor.role).toUpperCase() === 'VENDOR';
     await ensureVendorUserCanAccessVendor(client, vendorId, actor);
 
     const vendorResult = await client.query('SELECT id FROM vendors WHERE id = $1 LIMIT 1;', [vendorId]);
@@ -646,7 +668,7 @@ async function getVendorRfqs(vendorId, actor) {
       [vendorId]
     );
 
-    return result.rows.map(sanitizeRfqRow);
+    return result.rows.map(isVendor ? sanitizeVendorRfqRow : sanitizeRfqRow);
   } finally {
     client.release();
   }
