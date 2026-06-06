@@ -3,7 +3,7 @@ const { createHttpError } = require('./vendorService');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REPORT_ROLES = ['ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER'];
-const LOG_ROLES = ['ADMIN', 'MANAGER'];
+const LOG_ROLES = ['ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER', 'VENDOR'];
 
 function assertUuid(value, fieldName) {
   if (!value || !UUID_REGEX.test(String(value).trim())) {
@@ -43,6 +43,15 @@ async function listActivityLogs(query, actor) {
   const clauses = [];
   const values = [];
 
+  // Enforce vendor data isolation: vendors can only see logs where al.user_id matches their user id
+  if (actor.role === 'VENDOR') {
+    values.push(actor.id);
+    clauses.push(`al.user_id = $${values.length}`);
+  } else if (query.userId) {
+    values.push(assertUuid(query.userId, 'userId'));
+    clauses.push(`al.user_id = $${values.length}`);
+  }
+
   if (query.entityType) {
     values.push(String(query.entityType).trim());
     clauses.push(`al.entity_type = $${values.length}`);
@@ -51,11 +60,6 @@ async function listActivityLogs(query, actor) {
   if (query.action) {
     values.push(String(query.action).trim());
     clauses.push(`al.action = $${values.length}`);
-  }
-
-  if (query.userId) {
-    values.push(assertUuid(query.userId, 'userId'));
-    clauses.push(`al.user_id = $${values.length}`);
   }
 
   if (query.search) {
@@ -162,6 +166,11 @@ async function getActivityLogById(activityLogId, actor) {
   }
 
   const row = result.rows[0];
+
+  // Enforce vendor data isolation: vendors can only retrieve their own logs
+  if (actor.role === 'VENDOR' && row.user_id !== actor.id) {
+    throw createHttpError(403, 'You do not have permission to access this activity log.');
+  }
 
   return {
     id: row.id,

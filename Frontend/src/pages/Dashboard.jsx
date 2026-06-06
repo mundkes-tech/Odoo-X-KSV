@@ -285,8 +285,8 @@ export default function Dashboard() {
       console.warn("Failed to fetch invoices from backend", err);
     }
 
-    // 6. Fetch Logs (Admin or Manager Only)
-    if (isAdmin || isManager) {
+    // 6. Fetch Logs (Admin, Manager, Procurement Officer, or Vendor)
+    if (isAdmin || isManager || isProcurementOfficer || isVendor) {
       try {
         const res = await fetch(`${API_BASE}/activity-logs?limit=100`, { headers });
         const data = await res.json();

@@ -25,4 +25,10 @@ router.patch(
   notificationController.markAllRead
 );
 
+router.delete(
+  '/notifications/clear',
+  authorizeRoles('ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER', 'VENDOR'),
+  notificationController.clearAll
+);
+
 module.exports = router;

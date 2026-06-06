@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
 import { 
   Search, Filter, Plus, Eye, Download, Mail, Clock, 
-  CheckCircle2, XCircle, Receipt, Send, FileText, ChevronRight, X 
+  CheckCircle2, XCircle, Receipt, Send, FileText, ChevronRight, X, Printer
 } from 'lucide-react';
 
 export default function InvoiceManagement({ 
@@ -167,6 +166,126 @@ export default function InvoiceManagement({
     } catch (err) {
       alert("Failed to download PDF: " + err.message);
     }
+  };
+
+  // Print Invoice
+  const handlePrintInvoice = (invoice) => {
+    const printWindow = window.open('', '_blank');
+    const vendorName = invoice.vendor?.company_name || 'Vendor';
+    const poNum = invoice.purchase_order?.po_number || 'PO';
+    const subtotal = Number(invoice.subtotal || 0);
+    const taxAmount = Number(invoice.tax_amount || 0);
+    const totalAmount = Number(invoice.total_amount || 0);
+    const cgst = Number((subtotal * 0.09).toFixed(2));
+    const sgst = Number((subtotal * 0.09).toFixed(2));
+    
+    printWindow.document.write(`
+      <html>
+      <head>
+        <title>Invoice - \${invoice.invoice_number}</title>
+        <style>
+          body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; margin: 40px; }
+          .header-table { width: 100%; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+          .company-logo { font-size: 24px; font-weight: bold; color: #1e3a8a; }
+          .doc-title { text-align: right; font-size: 24px; font-weight: bold; text-transform: uppercase; color: #555; }
+          .info-table { width: 100%; margin-bottom: 30px; }
+          .info-cell { width: 50%; vertical-align: top; font-size: 14px; line-height: 1.6; }
+          .info-label { font-weight: bold; color: #666; font-size: 11px; text-transform: uppercase; margin-bottom: 4px; }
+          .items-table { width: 100%; border-collapse: collapse; margin-bottom: 30px; }
+          .items-table th { border-bottom: 2px solid #ddd; text-align: left; padding: 10px; font-size: 12px; font-weight: bold; text-transform: uppercase; color: #555; }
+          .items-table td { border-bottom: 1px solid #eee; padding: 10px; font-size: 14px; }
+          .totals-table { width: 300px; float: right; border-collapse: collapse; margin-bottom: 30px; }
+          .totals-table td { padding: 8px 10px; font-size: 14px; }
+          .totals-table tr.grand-total { border-top: 2px solid #333; font-weight: bold; font-size: 16px; color: #1e3a8a; }
+          .footer { clear: both; text-align: center; font-size: 12px; color: #999; border-top: 1px dashed #ccc; padding-top: 20px; margin-top: 50px; }
+          @media print {
+            body { margin: 20px; }
+          }
+        </style>
+      </head>
+      <body>
+        <table class="header-table">
+          <tr>
+            <td class="company-logo">VendorBridge ERP</td>
+            <td class="doc-title">Tax Invoice</td>
+          </tr>
+        </table>
+        
+        <table class="info-table">
+          <tr>
+            <td class="info-cell">
+              <div class="info-label">Billing From (Vendor)</div>
+              <strong>\${vendorName}</strong><br/>
+              GSTIN: \${invoice.vendor?.gst_number || '-'}<br/>
+              Address: \${invoice.vendor?.address || '-'}<br/>
+              Phone: \${invoice.vendor?.phone || '-'}<br/>
+              Email: \${invoice.vendor?.email || '-'}
+            </td>
+            <td class="info-cell" style="padding-left: 50px;">
+              <div class="info-label">Invoice Details</div>
+              <strong>Invoice No:</strong> \${invoice.invoice_number}<br/>
+              <strong>Date:</strong> \${new Date(invoice.created_at).toLocaleDateString('en-IN')}<br/>
+              <strong>Purchase Order:</strong> \${poNum}<br/>
+              <strong>Payment Status:</strong> \${invoice.status}<br/>
+              <strong>Tax Code:</strong> CGST/SGST 18%
+            </td>
+          </tr>
+        </table>
+
+        <table class="items-table">
+          <thead>
+            <tr>
+              <th>Description</th>
+              <th style="text-align: right;">Subtotal</th>
+              <th style="text-align: right;">GST Rate</th>
+              <th style="text-align: right;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Supply of Goods/Services under \${poNum} - \${invoice.purchase_order?.rfq?.title || 'Procurement Requirement'}</td>
+              <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(subtotal)}</td>
+              <td style="text-align: right;">18.00%</td>
+              <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(totalAmount)}</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <table class="totals-table">
+          <tr>
+            <td>Subtotal:</td>
+            <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(subtotal)}</td>
+          </tr>
+          <tr>
+            <td>CGST (9%):</td>
+            <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(cgst)}</td>
+          </tr>
+          <tr>
+            <td>SGST (9%):</td>
+            <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(sgst)}</td>
+          </tr>
+          <tr class="grand-total">
+            <td>Grand Total:</td>
+            <td style="text-align: right;">₹\${new Intl.NumberFormat('en-IN').format(totalAmount)}</td>
+          </tr>
+        </table>
+
+        <div class="footer">
+          Thank you for your business.<br/>
+          Generated by VendorBridge ERP System on \${new Date().toLocaleDateString('en-IN')}
+        </div>
+
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(function() { window.close(); }, 500);
+          };
+        </script>
+      </body>
+      </html>
+    `);
+    printWindow.document.close();
+    onAddLog('INVOICE_PRINTED', `Triggered print layout for Invoice \${invoice.invoice_number}`);
   };
 
   // Send Email
@@ -387,6 +506,13 @@ export default function InvoiceManagement({
                           >
                             <Download className="w-5.5 h-5.5" />
                           </button>
+                          <button
+                            onClick={() => handlePrintInvoice(inv)}
+                            title="Print Invoice"
+                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-xl transition-colors cursor-pointer"
+                          >
+                            <Printer className="w-5.5 h-5.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -565,6 +691,13 @@ export default function InvoiceManagement({
                 >
                   <Download className="w-4.5 h-4.5 text-slate-450" />
                   <span>Download PDF Spec</span>
+                </button>
+                <button
+                  onClick={() => handlePrintInvoice(selectedInvoice)}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-3 border border-slate-200 text-indigo-700 hover:bg-indigo-50/50 font-bold rounded-xl transition-all cursor-pointer text-sm"
+                >
+                  <Printer className="w-4.5 h-4.5" />
+                  <span>Print Invoice</span>
                 </button>
                 <button
                   onClick={() => {

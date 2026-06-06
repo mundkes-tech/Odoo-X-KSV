@@ -2,6 +2,7 @@ const {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  clearAllNotifications,
 } = require('../services/notificationService');
 
 async function list(req, res, next) {
@@ -46,8 +47,23 @@ async function markAllRead(req, res, next) {
   }
 }
 
+async function clearAll(req, res, next) {
+  try {
+    const result = await clearAllNotifications(req.user);
+
+    return res.status(200).json({
+      success: true,
+      message: 'All notifications cleared.',
+      data: result,
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   list,
   markRead,
   markAllRead,
+  clearAll,
 };

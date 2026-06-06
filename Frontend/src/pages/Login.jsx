@@ -38,9 +38,10 @@ export default function Login() {
     <div className="h-screen w-screen flex flex-col md:flex-row bg-slate-50 font-sans antialiased overflow-hidden">
       
       {/* Left side: Navy promotional panel */}
-      <div className="w-full md:w-1/2 bg-[#0b1528] text-white p-8 md:p-12 flex flex-col justify-between relative overflow-hidden h-full">
-        {/* Subtle background glow */}
-        <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-blue-500/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="w-full md:w-1/2 bg-[#0b1528] text-white p-8 md:p-12 flex flex-col justify-between relative overflow-hidden h-full select-none">
+        {/* Glowing background gradients */}
+        <div className="absolute -top-40 -right-40 w-[600px] h-[600px] bg-blue-500/15 rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute -bottom-40 -left-40 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px] pointer-events-none" />
 
         {/* Brand Header */}
         <div className="flex items-center gap-3 z-10">
@@ -51,37 +52,28 @@ export default function Login() {
         </div>
 
         {/* Core Value Prop */}
-        <div className="my-auto py-4 max-w-md z-10 flex flex-col justify-center flex-grow">
+        <div className="my-auto py-6 max-w-md z-10 flex flex-col justify-center flex-grow">
           <h1 className="text-3xl md:text-4.5xl font-bold tracking-tight text-white leading-tight mb-4">
             Procurement, <br />orchestrated.
           </h1>
-          <p className="text-slate-400 text-sm md:text-base mb-6 leading-relaxed">
+          <p className="text-slate-400 text-sm md:text-base mb-8 leading-relaxed">
             Manage vendors, RFQs, quotations, approvals, purchase orders and invoices — all from one centralized ERP workspace.
           </p>
 
-          <ul className="space-y-3 mb-8">
+          <ul className="space-y-4">
             {[
               'Role-based access for officers, approvers, vendors and admins',
               'Side-by-side quotation comparison and audit trail',
               'PDF Invoices, email dispatch, real-time analytics',
             ].map((feature, idx) => (
-              <li key={idx} className="flex items-start gap-3 text-slate-300 text-sm">
+              <li key={idx} className="flex items-start gap-3 text-slate-350 text-sm md:text-base">
                 <div className="p-1 rounded-md bg-blue-500/10 border border-blue-500/20 text-blue-400 shrink-0 mt-0.5">
-                  <CheckCircle className="w-3.5 h-3.5" />
+                  <CheckCircle className="w-4 h-4" />
                 </div>
                 <span>{feature}</span>
               </li>
             ))}
           </ul>
-
-          {/* Overview Image */}
-          <div className="rounded-xl border border-slate-800 bg-slate-950/40 p-1.5 overflow-hidden shadow-2xl max-w-xs">
-            <img 
-              src="/vendor_collaboration.png" 
-              alt="VendorBridge Overview" 
-              className="w-full max-h-[110px] md:max-h-[140px] rounded-lg object-cover"
-            />
-          </div>
         </div>
 
         {/* Footer info */}

@@ -49,6 +49,23 @@ export default function ReportsModule({ users, vendors, rfqs, purchaseOrders, in
 
   const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
+  const filterByDateRange = (items, dateField) => {
+    if (dateRange === 'all_time') return items;
+    const now = new Date();
+    let cutoff = new Date();
+    if (dateRange === 'last_30_days') {
+      cutoff.setDate(now.getDate() - 30);
+    } else if (dateRange === 'last_quarter') {
+      cutoff.setDate(now.getDate() - 90);
+    } else if (dateRange === 'year_to_date') {
+      cutoff = new Date(now.getFullYear(), 0, 1);
+    }
+    return items.filter(item => {
+      const d = new Date(item[dateField]);
+      return !isNaN(d.getTime()) && d >= cutoff;
+    });
+  };
+
   const handleGenerateReport = async () => {
     setGenerating(true);
     setSuccess(false);
@@ -63,40 +80,46 @@ export default function ReportsModule({ users, vendors, rfqs, purchaseOrders, in
     setCurrentStep(`Compiling file payload to ${format.toUpperCase()} format...`);
     await sleep(500);
 
+    // Apply date range filters
+    const filteredRfqs = filterByDateRange(rfqs || [], 'created_at');
+    const filteredVendors = filterByDateRange(vendors || [], 'created_at');
+    const filteredPOs = filterByDateRange(purchaseOrders || [], 'created_at');
+    const filteredInvoices = filterByDateRange(invoices || [], 'created_at');
+
     // Generate CSV data based on report type
     let csvContent = 'data:text/csv;charset=utf-8,';
     let filename = '';
 
     if (reportType === 'MONTHLY_PROCUREMENT') {
-      csvContent += 'RFQ Code,Title,Status,Created At,Category\n';
-      rfqs.forEach(rfq => {
-        csvContent += `"${rfq.id}","${rfq.title}","${rfq.status}","${rfq.created_at}","${rfq.category}"\n`;
+      csvContent += 'RFQ Code,Title,Status,Quantity,Deadline,Created At\n';
+      filteredRfqs.forEach(rfq => {
+        csvContent += `"${rfq.id}","${rfq.title}","${rfq.status}","${rfq.quantity}","${rfq.deadline}","${rfq.created_at}"\n`;
       });
       filename = `monthly_procurement_report_${dateRange}`;
     } else if (reportType === 'VENDOR_PERFORMANCE') {
       csvContent += 'Company Name,GST Number,Category,Email,Status,Average Rating,Delivery Performance\n';
-      vendors.forEach(v => {
+      filteredVendors.forEach(v => {
         const rating = v.status === 'ACTIVE' ? '4.8/5' : '0.0/5';
         const delivery = v.status === 'ACTIVE' ? '96%' : 'N/A';
         csvContent += `"${v.company_name}","${v.gst_number}","${v.category}","${v.email}","${v.status}","${rating}","${delivery}"\n`;
       });
       filename = `vendor_performance_report_${dateRange}`;
     } else if (reportType === 'SPENDING') {
-      csvContent += 'Purchase Order,Vendor,Amount,Status,Date\n';
-      purchaseOrders.forEach(po => {
-        csvContent += `"${po.id}","${po.vendor}","${po.amount}","${po.status}","${po.created_at}"\n`;
+      csvContent += 'Purchase Order Ref,Vendor,Amount,Status,Date\n';
+      filteredPOs.forEach(po => {
+        csvContent += `"${po.po_number || po.id}","${po.vendor?.company_name || 'Vendor'}","${po.total_amount || 0}","${po.status}","${po.created_at}"\n`;
       });
       filename = `procurement_spending_report_${dateRange}`;
     } else if (reportType === 'PURCHASE_ORDER') {
       csvContent += 'PO Code,Title,Vendor,Amount,Status,Date\n';
-      purchaseOrders.forEach(po => {
-        csvContent += `"${po.id}","${po.title}","${po.vendor}","${po.amount}","${po.status}","${po.created_at}"\n`;
+      filteredPOs.forEach(po => {
+        csvContent += `"${po.po_number || po.id}","${po.rfq?.title || 'RFQ Requirement'}","${po.vendor?.company_name || 'Vendor'}","${po.total_amount || 0}","${po.status}","${po.created_at}"\n`;
       });
       filename = `purchase_order_status_report_${dateRange}`;
     } else if (reportType === 'INVOICE') {
-      csvContent += 'Invoice Code,Amount,Vendor,Status,Due Date,Created At\n';
-      invoices.forEach(inv => {
-        csvContent += `"${inv.id}","${inv.amount}","${inv.vendor}","${inv.status}","${inv.due_date}","${inv.created_at}"\n`;
+      csvContent += 'Invoice Code,Amount,Vendor,Status,Created At\n';
+      filteredInvoices.forEach(inv => {
+        csvContent += `"${inv.invoice_number}","${inv.total_amount || 0}","${inv.vendor?.company_name || 'Vendor'}","${inv.status}","${inv.created_at}"\n`;
       });
       filename = `invoice_audit_report_${dateRange}`;
     }

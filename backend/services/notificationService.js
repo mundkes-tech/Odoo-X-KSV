@@ -118,8 +118,23 @@ async function markAllNotificationsRead(actor) {
   };
 }
 
+async function clearAllNotifications(actor) {
+  const result = await pool.query(
+    `
+      DELETE FROM notifications
+      WHERE user_id = $1;
+    `,
+    [actor.id]
+  );
+
+  return {
+    deletedCount: result.rowCount,
+  };
+}
+
 module.exports = {
   getNotifications,
   markNotificationRead,
   markAllNotificationsRead,
+  clearAllNotifications,
 };
