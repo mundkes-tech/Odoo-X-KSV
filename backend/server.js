@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const vendorRoutes = require('./routes/vendorRoutes');
 const rfqRoutes = require('./routes/rfqRoutes');
 const quotationRoutes = require('./routes/quotationRoutes');
+const comparisonRoutes = require('./routes/comparisonRoutes');
 
 const logger = require('./utils/logger');
 const { testConnection, initializeDatabase, pool } = require('./config/db');
@@ -42,6 +43,7 @@ app.get('/health', async (req, res, next) => {
 
 app.use('/', rfqRoutes);
 app.use('/quotations', quotationRoutes);
+app.use('/', comparisonRoutes);
 
 app.use((req, res) => {
 	res.status(404).json({
