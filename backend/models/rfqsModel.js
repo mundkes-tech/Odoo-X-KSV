@@ -23,14 +23,14 @@ async function createRfqsTable(pool) {
   await pool.query(`
     UPDATE rfqs
     SET status = 'DRAFT'
-    WHERE status NOT IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED', 'VENDOR_SELECTED');
+    WHERE status NOT IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED', 'VENDOR_SELECTED', 'APPROVED', 'REJECTED');
   `);
 
   await pool.query('ALTER TABLE rfqs DROP CONSTRAINT IF EXISTS rfqs_status_check;');
   await pool.query(`
     ALTER TABLE rfqs
     ADD CONSTRAINT rfqs_status_check
-    CHECK (status IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED', 'VENDOR_SELECTED'));
+    CHECK (status IN ('DRAFT', 'PUBLISHED', 'CLOSED', 'CANCELLED', 'VENDOR_SELECTED', 'APPROVED', 'REJECTED'));
   `);
 
   await pool.query('CREATE INDEX IF NOT EXISTS idx_rfqs_status ON rfqs (status);');
