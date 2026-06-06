@@ -650,9 +650,30 @@ async function getVendorRfqs(vendorId, actor) {
 
   try {
     const isVendor = actor && String(actor.role).toUpperCase() === 'VENDOR';
-    await ensureVendorUserCanAccessVendor(client, vendorId, actor);
+    let resolvedVendorId = vendorId;
 
-    const vendorResult = await client.query('SELECT id FROM vendors WHERE id = $1 LIMIT 1;', [vendorId]);
+    if (isVendor && String(vendorId).toLowerCase() === 'me') {
+      const vendorResult = await client.query(
+        `
+          SELECT id
+          FROM vendors
+          WHERE email = $1
+            AND status = 'ACTIVE'
+          LIMIT 1;
+        `,
+        [actor.email]
+      );
+
+      if (vendorResult.rowCount === 0) {
+        throw createHttpError(403, 'Active vendor profile not found for this user.');
+      }
+
+      resolvedVendorId = vendorResult.rows[0].id;
+    }
+
+    await ensureVendorUserCanAccessVendor(client, resolvedVendorId, actor);
+
+    const vendorResult = await client.query('SELECT id FROM vendors WHERE id = $1 LIMIT 1;', [resolvedVendorId]);
     if (vendorResult.rowCount === 0) {
       throw createHttpError(404, 'Vendor not found.');
     }
@@ -665,7 +686,7 @@ async function getVendorRfqs(vendorId, actor) {
         WHERE rv.vendor_id = $1
         ORDER BY rv.assigned_at DESC;
       `,
-      [vendorId]
+      [resolvedVendorId]
     );
 
     return result.rows.map(isVendor ? sanitizeVendorRfqRow : sanitizeRfqRow);
