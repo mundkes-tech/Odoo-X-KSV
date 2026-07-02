@@ -1,5 +1,6 @@
 const logger = require('../utils/logger');
 const { createUsersTable } = require('./usersModel');
+const { syncUserVendorLinkage } = require('./usersModel');
 const { createVendorsTable } = require('./vendorsModel');
 const { createRfqsTable } = require('./rfqsModel');
 const { createRfqVendorsTable } = require('./rfqVendorsModel');
@@ -60,6 +61,8 @@ async function initializeModels(pool) {
     await step.run(pool);
     logger.info(`Table ready: ${step.name}`);
   }
+
+  await syncUserVendorLinkage(pool);
 
   await createUpdatedAtTriggers(pool);
   logger.info('Database schema initialization completed successfully.');

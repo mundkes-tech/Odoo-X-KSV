@@ -45,7 +45,7 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
       });
 
       const data = await response.json();
-      if (response.ok && data.success && data.vendors && data.vendors.length > 0) {
+      if (response.ok && data.success && Array.isArray(data.vendors)) {
         // Map backend keys
         const mappedVendors = data.vendors.map(v => ({
           id: v.id,
@@ -57,20 +57,20 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
           address: v.address || '',
           status: v.status || 'ACTIVE',
           created_at: v.created_at || new Date().toISOString(),
-          // Mock vendor performance metrics if not present in DB
           contact_person: v.contact_person || 'Representative',
-          rfqs_participated: v.rfqs_participated ?? 8,
-          quotations_submitted: v.quotations_submitted ?? 6,
-          success_rate: v.success_rate ?? 75,
-          rating: v.rating ?? 4.8,
-          delivery_performance: v.delivery_performance ?? 96,
-          procurement_value: v.procurement_value ?? 150000
+          rfqs_participated: v.rfqs_participated ?? 0,
+          quotations_submitted: v.quotations_submitted ?? 0,
+          success_rate: v.success_rate ?? null,
+          rating: v.rating ?? null,
+          delivery_performance: v.delivery_performance ?? null,
+          procurement_value: v.procurement_value ?? 0
         }));
         
         onSyncVendors(mappedVendors);
       }
     } catch (err) {
-      console.warn("Backend API not reachable. Using mock state fallback.", err);
+      console.warn("Failed to fetch vendors from backend", err);
+      setApiError('Failed to load vendors from backend. Please refresh or try again.');
     } finally {
       setApiLoading(false);
     }
@@ -171,39 +171,17 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
         contact_person: formData.contactPerson || 'Representative',
         rfqs_participated: 0,
         quotations_submitted: 0,
-        success_rate: 0,
-        rating: 5.0,
-        delivery_performance: 100,
+        success_rate: null,
+        rating: null,
+        delivery_performance: null,
         procurement_value: 0
       };
 
       onAddVendor(newVendor);
-      onAddLog('VENDOR_CREATED', `Admin registered vendor company: ${formData.companyName}`);
+      onAddLog('VENDOR_CREATED', `Vendor company created: ${formData.companyName}`);
       setIsAddModalOpen(false);
     } catch (err) {
-      // Fallback local creation
-      console.warn("Backend save failed, saving locally...", err);
-      const newVendor = {
-        id: Math.random().toString(),
-        company_name: formData.companyName,
-        gst_number: formData.gstNumber,
-        category: formData.category,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        status: formData.status,
-        created_at: new Date().toISOString(),
-        contact_person: formData.contactPerson || 'Representative',
-        rfqs_participated: 0,
-        quotations_submitted: 0,
-        success_rate: 0,
-        rating: 5.0,
-        delivery_performance: 100,
-        procurement_value: 0
-      };
-      onAddVendor(newVendor);
-      onAddLog('VENDOR_CREATED', `Admin registered vendor company (Local): ${formData.companyName}`);
-      setIsAddModalOpen(false);
+      setApiError(err.message || 'Failed to create vendor.');
     } finally {
       setApiLoading(false);
     }
@@ -254,24 +232,10 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
       };
 
       onUpdateVendor(updatedVendor);
-      onAddLog('VENDOR_UPDATED', `Admin updated vendor company details: ${formData.companyName}`);
+      onAddLog('VENDOR_UPDATED', `Vendor company updated: ${formData.companyName}`);
       setIsEditModalOpen(false);
     } catch (err) {
-      console.warn("Backend update failed, saving locally...", err);
-      const updatedVendor = {
-        ...selectedVendor,
-        company_name: formData.companyName,
-        gst_number: formData.gstNumber,
-        category: formData.category,
-        email: formData.email,
-        phone: formData.phone,
-        address: formData.address,
-        status: formData.status,
-        contact_person: formData.contactPerson,
-      };
-      onUpdateVendor(updatedVendor);
-      onAddLog('VENDOR_UPDATED', `Admin updated vendor company details (Local): ${formData.companyName}`);
-      setIsEditModalOpen(false);
+      setApiError(err.message || 'Failed to update vendor.');
     } finally {
       setApiLoading(false);
     }
@@ -297,28 +261,54 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
       }
 
       onDeleteVendor(vendor.id);
-      onAddLog('VENDOR_DELETED', `Admin deleted vendor registration: ${vendor.company_name}`);
+      onAddLog('VENDOR_DELETED', `Vendor registration deleted: ${vendor.company_name}`);
     } catch (err) {
-      console.warn("Backend delete failed, removing locally...", err);
-      onDeleteVendor(vendor.id);
-      onAddLog('VENDOR_DELETED', `Admin deleted vendor registration (Local): ${vendor.company_name}`);
+      setApiError(err.message || 'Failed to delete vendor.');
     }
   };
 
   // Toggle Suspend Status
-  const handleToggleSuspend = (vendor) => {
+  const handleToggleSuspend = async (vendor) => {
     const nextStatus = vendor.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
-    const updatedVendor = {
-      ...vendor,
-      status: nextStatus,
-    };
-    onUpdateVendor(updatedVendor);
-    onAddLog(
-      nextStatus === 'INACTIVE' ? 'VENDOR_SUSPENDED' : 'VENDOR_ACTIVATED',
-      `Admin ${nextStatus === 'INACTIVE' ? 'suspended' : 'activated'} vendor: ${vendor.company_name}`
-    );
-    if (selectedVendor?.id === vendor.id) {
-      setSelectedVendor(updatedVendor);
+    setApiError('');
+    try {
+      const response = await fetch(`${API_BASE}/vendors/${vendor.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ status: nextStatus })
+      });
+
+      const data = await response.json();
+      if (!response.ok || !data.success || !data.data) {
+        throw new Error(data.message || 'Failed to update vendor status.');
+      }
+
+      const updatedVendor = {
+        ...vendor,
+        ...data.data,
+        contact_person: vendor.contact_person,
+        rfqs_participated: vendor.rfqs_participated,
+        quotations_submitted: vendor.quotations_submitted,
+        success_rate: vendor.success_rate,
+        rating: vendor.rating,
+        delivery_performance: vendor.delivery_performance,
+        procurement_value: vendor.procurement_value,
+      };
+
+      onUpdateVendor(updatedVendor);
+      onAddLog(
+        nextStatus === 'INACTIVE' ? 'VENDOR_SUSPENDED' : 'VENDOR_ACTIVATED',
+        `Admin ${nextStatus === 'INACTIVE' ? 'suspended' : 'activated'} vendor: ${vendor.company_name}`
+      );
+
+      if (selectedVendor?.id === vendor.id) {
+        setSelectedVendor(updatedVendor);
+      }
+    } catch (err) {
+      setApiError(err.message || 'Failed to update vendor status.');
     }
   };
 
@@ -343,6 +333,9 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
       maximumFractionDigits: 0
     }).format(val);
   };
+
+  const formatPercent = (val) => (val === null || val === undefined ? 'N/A' : `${val}%`);
+  const formatRating = (val) => (val === null || val === undefined ? 'N/A' : `${val} / 5`);
 
   return (
     <div className="space-y-6 select-none font-sans text-sm md:text-base">
@@ -667,15 +660,15 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
                 <div className="grid grid-cols-3 gap-3 text-sm bg-slate-50 border border-slate-150 rounded-xl p-4.5 text-center">
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">RFQs Participated</span>
-                    <span className="text-lg font-extrabold text-slate-900 block">{selectedVendor.rfqs_participated ?? 8}</span>
+                    <span className="text-lg font-extrabold text-slate-900 block">{selectedVendor.rfqs_participated ?? 0}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">Submitted Quotes</span>
-                    <span className="text-lg font-extrabold text-slate-900 block">{selectedVendor.quotations_submitted ?? 6}</span>
+                    <span className="text-lg font-extrabold text-slate-900 block">{selectedVendor.quotations_submitted ?? 0}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">Quotation Success</span>
-                    <span className="text-lg font-extrabold text-emerald-600 block">{selectedVendor.success_rate ?? 75}%</span>
+                    <span className="text-lg font-extrabold text-emerald-600 block">{formatPercent(selectedVendor.success_rate)}</span>
                   </div>
                 </div>
               </div>
@@ -686,11 +679,11 @@ export default function VendorManagement({ vendors: localVendors, onSyncVendors,
                 <div className="grid grid-cols-3 gap-3 text-sm bg-slate-50 border border-slate-150 rounded-xl p-4.5 text-center">
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">Average Rating</span>
-                    <span className="text-lg font-extrabold text-blue-600 block">{selectedVendor.rating ?? 4.8} / 5</span>
+                    <span className="text-lg font-extrabold text-blue-600 block">{formatRating(selectedVendor.rating)}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">Delivery Perf.</span>
-                    <span className="text-lg font-extrabold text-emerald-600 block">{selectedVendor.delivery_performance ?? 96}%</span>
+                    <span className="text-lg font-extrabold text-emerald-600 block">{formatPercent(selectedVendor.delivery_performance)}</span>
                   </div>
                   <div className="space-y-0.5">
                     <span className="text-slate-400 font-bold text-xs">Procurement Val.</span>

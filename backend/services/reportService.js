@@ -3,7 +3,7 @@ const { createHttpError } = require('./vendorService');
 
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const REPORT_ROLES = ['ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER'];
-const LOG_ROLES = ['ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER', 'VENDOR'];
+const LOG_ROLES = ['ADMIN', 'MANAGER', 'PROCUREMENT_OFFICER'];
 
 function assertUuid(value, fieldName) {
   if (!value || !UUID_REGEX.test(String(value).trim())) {

@@ -1,4 +1,5 @@
 const { pool } = require('../config/db');
+const { createUserAccount, DEFAULT_VENDOR_TEMP_PASSWORD } = require('./authService');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const ALLOWED_STATUSES = ['ACTIVE', 'INACTIVE'];
@@ -37,6 +38,12 @@ function sanitizeVendorRow(vendorRow) {
     status: vendorRow.status,
     created_at: vendorRow.created_at,
     updated_at: vendorRow.updated_at,
+    rfqs_participated: vendorRow.rfqs_participated,
+    quotations_submitted: vendorRow.quotations_submitted,
+    success_rate: vendorRow.success_rate,
+    rating: vendorRow.rating,
+    delivery_performance: vendorRow.delivery_performance,
+    procurement_value: vendorRow.procurement_value,
   };
 }
 
@@ -225,6 +232,29 @@ async function createVendor(payload, actor) {
     await client.query('BEGIN');
     await ensureVendorUniqueness({ client, email: vendorInput.email, gst_number: vendorInput.gst_number });
 
+    const existingUserResult = await client.query(
+      `
+        SELECT id, role, vendor_id
+        FROM users
+        WHERE email = $1
+        LIMIT 1
+        FOR UPDATE;
+      `,
+      [vendorInput.email]
+    );
+
+    if (existingUserResult.rowCount > 0) {
+      const existingUser = existingUserResult.rows[0];
+
+      if (existingUser.role !== 'VENDOR') {
+        throw createHttpError(409, 'A user with this email already exists.');
+      }
+
+      if (existingUser.vendor_id) {
+        throw createHttpError(409, 'Vendor account already exists for this email.');
+      }
+    }
+
     const insertResult = await client.query(
       `
         INSERT INTO vendors (company_name, gst_number, category, email, phone, address, status)
@@ -243,6 +273,40 @@ async function createVendor(payload, actor) {
     );
 
     const createdVendor = insertResult.rows[0];
+    const temporaryPassword = DEFAULT_VENDOR_TEMP_PASSWORD;
+
+    if (existingUserResult.rowCount > 0) {
+      const passwordHash = await require('bcrypt').hash(temporaryPassword, Number(process.env.BCRYPT_SALT_ROUNDS) || 10);
+      const linkedUserResult = await client.query(
+        `
+          UPDATE users
+          SET
+            full_name = $2,
+            password_hash = $3,
+            vendor_id = $4,
+            is_active = TRUE,
+            updated_at = NOW()
+          WHERE id = $1
+          RETURNING id, full_name, email, role, vendor_id, is_active, created_at, updated_at;
+        `,
+        [existingUserResult.rows[0].id, createdVendor.company_name, passwordHash, createdVendor.id]
+      );
+    } else {
+      await createUserAccount(
+        {
+          full_name: createdVendor.company_name,
+          email: createdVendor.email,
+          password: temporaryPassword,
+          role: 'VENDOR',
+        },
+        {
+          client,
+          allowedRoles: ['ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER', 'VENDOR'],
+          vendorId: createdVendor.id,
+          isActive: true,
+        }
+      );
+    }
 
     await logActivity(client, {
       userId: actorId,
@@ -253,6 +317,14 @@ async function createVendor(payload, actor) {
     });
 
     await client.query('COMMIT');
+
+    const { sendVendorCredentialsEmail } = require('./emailService');
+    await sendVendorCredentialsEmail({
+      email: createdVendor.email,
+      companyName: createdVendor.company_name,
+      temporaryPassword,
+    });
+
     return sanitizeVendorRow(createdVendor);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -268,10 +340,89 @@ async function listVendors(query) {
 
   const countQuery = `SELECT COUNT(*)::int AS total FROM vendors ${whereClause};`;
   const dataQuery = `
-    SELECT id, company_name, gst_number, category, email, phone, address, status, created_at, updated_at
-    FROM vendors
+    SELECT
+      v.id,
+      v.company_name,
+      v.gst_number,
+      v.category,
+      v.email,
+      v.phone,
+      v.address,
+      v.status,
+      v.created_at,
+      v.updated_at,
+      COALESCE(rfq_metrics.rfqs_participated, 0)::int AS rfqs_participated,
+      COALESCE(quotation_metrics.quotations_submitted, 0)::int AS quotations_submitted,
+      COALESCE(
+        ROUND(
+          CASE
+            WHEN COALESCE(quotation_metrics.quotations_submitted, 0) > 0 THEN
+              (quotation_metrics.selected_quotations::numeric / quotation_metrics.quotations_submitted) * 100
+            ELSE NULL
+          END,
+          1
+        ),
+        0
+      )::numeric AS success_rate,
+      COALESCE(
+        ROUND(
+          (
+            COALESCE(
+              CASE
+                WHEN COALESCE(quotation_metrics.quotations_submitted, 0) > 0 THEN
+                  (quotation_metrics.selected_quotations::numeric / quotation_metrics.quotations_submitted) * 100
+                ELSE 0
+              END,
+              0
+            ) +
+            COALESCE(
+              CASE
+                WHEN COALESCE(po_metrics.purchase_orders_count, 0) > 0 THEN
+                  (po_metrics.completed_purchase_orders::numeric / po_metrics.purchase_orders_count) * 100
+                ELSE 0
+              END,
+              0
+            )
+          ) / 40.0,
+          1
+        ),
+        0
+      )::numeric AS rating,
+      COALESCE(
+        ROUND(
+          CASE
+            WHEN COALESCE(po_metrics.purchase_orders_count, 0) > 0 THEN
+              (po_metrics.completed_purchase_orders::numeric / po_metrics.purchase_orders_count) * 100
+            ELSE NULL
+          END,
+          1
+        ),
+        0
+      )::numeric AS delivery_performance,
+      COALESCE(po_metrics.procurement_value, 0)::numeric AS procurement_value
+    FROM vendors v
+    LEFT JOIN LATERAL (
+      SELECT COUNT(DISTINCT rv.rfq_id)::int AS rfqs_participated
+      FROM rfq_vendors rv
+      WHERE rv.vendor_id = v.id
+    ) rfq_metrics ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS quotations_submitted,
+        COUNT(*) FILTER (WHERE q.status = 'SELECTED')::int AS selected_quotations
+      FROM quotations q
+      WHERE q.vendor_id = v.id
+    ) quotation_metrics ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        COUNT(*)::int AS purchase_orders_count,
+        COUNT(*) FILTER (WHERE po.status = 'COMPLETED')::int AS completed_purchase_orders,
+        COALESCE(SUM(po.total_amount), 0)::numeric AS procurement_value
+      FROM purchase_orders po
+      WHERE po.vendor_id = v.id
+    ) po_metrics ON TRUE
     ${whereClause}
-    ORDER BY created_at DESC
+    ORDER BY v.created_at DESC
     LIMIT $${values.length + 1}
     OFFSET $${values.length + 2};
   `;
@@ -282,7 +433,15 @@ async function listVendors(query) {
   const total = countResult.rows[0].total;
 
   return {
-    vendors: dataResult.rows.map(sanitizeVendorRow),
+    vendors: dataResult.rows.map((row) => ({
+      ...sanitizeVendorRow(row),
+      rfqs_participated: Number(row.rfqs_participated || 0),
+      quotations_submitted: Number(row.quotations_submitted || 0),
+      success_rate: row.success_rate === null ? null : Number(row.success_rate),
+      rating: row.rating === null ? null : Number(row.rating),
+      delivery_performance: row.delivery_performance === null ? null : Number(row.delivery_performance),
+      procurement_value: Number(row.procurement_value || 0),
+    })),
     pagination: {
       page,
       limit,
@@ -372,6 +531,32 @@ async function updateVendor(vendorId, payload, actor) {
 
     const updatedVendor = updatedVendorResult.rows[0];
 
+    const linkedUserResult = await client.query(
+      `
+        SELECT id
+        FROM users
+        WHERE vendor_id = $1
+        LIMIT 1
+        FOR UPDATE;
+      `,
+      [vendorId]
+    );
+
+    if (linkedUserResult.rowCount > 0) {
+      await client.query(
+        `
+          UPDATE users
+          SET
+            full_name = $2,
+            email = $3,
+            is_active = $4,
+            updated_at = NOW()
+          WHERE vendor_id = $1;
+        `,
+        [vendorId, updatedVendor.company_name, updatedVendor.email, updatedVendor.status === 'ACTIVE']
+      );
+    }
+
     await logActivity(client, {
       userId: actorId,
       action: 'VENDOR_UPDATED',
@@ -399,7 +584,7 @@ async function deleteVendor(vendorId, actor) {
 
     const existingResult = await client.query(
       `
-        SELECT id, company_name
+        SELECT id, company_name, email
         FROM vendors
         WHERE id = $1
         LIMIT 1
@@ -413,6 +598,15 @@ async function deleteVendor(vendorId, actor) {
     }
 
     const existingVendor = existingResult.rows[0];
+
+    await client.query(
+      `
+        DELETE FROM users
+        WHERE vendor_id = $1
+           OR (LOWER(email) = LOWER($2) AND role = 'VENDOR');
+      `,
+      [vendorId, existingVendor.email]
+    );
 
     await logActivity(client, {
       userId: actorId,

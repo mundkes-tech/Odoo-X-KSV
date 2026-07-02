@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { 
   Search, Filter, Plus, Eye, Download, Mail, Clock, 
   CheckCircle2, XCircle, Receipt, Send, FileText, ChevronRight, X, Printer
@@ -614,7 +615,7 @@ export default function InvoiceManagement({
                   </span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-bold block uppercase text-[10px] tracking-wide">Due Date (Local)</span>
+                  <span className="text-slate-400 font-bold block uppercase text-[10px] tracking-wide">Due Date</span>
                   <span className="font-extrabold text-slate-800 block mt-1">
                     {new Date(selectedInvoice.created_at).toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' })}
                   </span>

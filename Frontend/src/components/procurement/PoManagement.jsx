@@ -52,8 +52,8 @@ export default function PoManagement({
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (response.ok && data.success && data.data) {
-        const list = data.data.purchaseOrders || data.data;
+      if (response.ok && data.success) {
+        const list = data.data?.purchaseOrders || data.purchase_orders || data.data || [];
         if (Array.isArray(list)) {
           setPurchaseOrders(list.map(p => ({
             id: p.id,

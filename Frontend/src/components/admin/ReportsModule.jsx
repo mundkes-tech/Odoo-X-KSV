@@ -47,8 +47,6 @@ export default function ReportsModule({ users, vendors, rfqs, purchaseOrders, in
     },
   ];
 
-  const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
   const filterByDateRange = (items, dateField) => {
     if (dateRange === 'all_time') return items;
     const now = new Date();
@@ -69,16 +67,8 @@ export default function ReportsModule({ users, vendors, rfqs, purchaseOrders, in
   const handleGenerateReport = async () => {
     setGenerating(true);
     setSuccess(false);
-    
-    // Simulate generation steps
-    setCurrentStep('Querying relational schemas...');
-    await sleep(600);
-    setCurrentStep('Filtering records by date criteria...');
-    await sleep(700);
-    setCurrentStep('Structuring relational rows...');
-    await sleep(600);
-    setCurrentStep(`Compiling file payload to ${format.toUpperCase()} format...`);
-    await sleep(500);
+
+    setCurrentStep(`Generating ${format.toUpperCase()} report...`);
 
     // Apply date range filters
     const filteredRfqs = filterByDateRange(rfqs || [], 'created_at');
@@ -133,9 +123,9 @@ export default function ReportsModule({ users, vendors, rfqs, purchaseOrders, in
     document.body.removeChild(link);
 
     setGenerating(false);
+    setCurrentStep('');
     setSuccess(true);
-    await sleep(2500);
-    setSuccess(false);
+    setTimeout(() => setSuccess(false), 2500);
   };
 
   const selectedReport = reports.find(r => r.id === reportType);
