@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { 
   Mail, Lock, Eye, EyeOff, User, AlertCircle, 
-  Shield, CheckCircle, Store, Users, FileText, ArrowRight
+  Shield, CheckCircle, Users, FileText, ArrowRight
 } from 'lucide-react';
 
 export default function Register() {
@@ -14,20 +14,13 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [selectedRole, setSelectedRole] = useState('VENDOR'); // Default
+  const [selectedRole, setSelectedRole] = useState('PROCUREMENT_OFFICER');
   
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const roles = [
-    {
-      id: 'VENDOR',
-      name: 'Vendor',
-      icon: Store,
-      desc: 'Submit bids, track sales, and upload invoices.',
-      theme: 'hover:border-slate-300 text-slate-700',
-    },
     {
       id: 'PROCUREMENT_OFFICER',
       name: 'Procurement',
@@ -128,7 +121,7 @@ export default function Register() {
 
           <ul className="space-y-4">
             {[
-              'Role-based access for officers, approvers, vendors and admins',
+              'Role-based access for officers, approvers and admins',
               'Side-by-side quotation comparison and audit trail',
               'PDF Invoices, email dispatch, real-time analytics',
             ].map((feature, idx) => (
@@ -155,7 +148,7 @@ export default function Register() {
           {/* Welcome Text */}
           <div className="mb-6">
             <h2 className="text-2xl md:text-3xl font-bold text-slate-900 tracking-tight">Create an account</h2>
-            <p className="text-slate-500 text-sm mt-1">Get started by filling out your details below.</p>
+            <p className="text-slate-500 text-sm mt-1">Vendor accounts are created by Procurement Officers.</p>
           </div>
 
           {/* Tabs */}
@@ -237,6 +230,7 @@ export default function Register() {
             {/* Role Selection Grid */}
             <div className="space-y-2">
               <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider block">Portal Role</label>
+              <p className="text-[11px] text-slate-500">Vendor accounts are created through Vendor Management.</p>
               <div className="grid grid-cols-2 gap-2">
                 {roles.map((roleObj) => {
                   const Icon = roleObj.icon;

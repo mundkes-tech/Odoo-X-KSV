@@ -1,6 +1,7 @@
 const nodemailer = require('nodemailer');
 const { createHttpError } = require('./vendorService');
 const { buildInvoicePdf, buildPurchaseOrderPdf } = require('./pdfService');
+const { DEFAULT_VENDOR_TEMP_PASSWORD } = require('./authService');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -37,6 +38,61 @@ function getFromAddress() {
   const displayName = process.env.EMAIL_FROM_NAME || 'VendorBridge';
 
   return `${displayName} <${email}>`;
+}
+
+async function sendVendorCredentialsEmail({ email, companyName, temporaryPassword }) {
+  const recipient = assertEmail(email);
+  const password = temporaryPassword || DEFAULT_VENDOR_TEMP_PASSWORD;
+  const subject = 'VendorBridge Vendor Account Created';
+  const text = [
+    'Your account has been created.',
+    '',
+    `Email: ${recipient}`,
+    `Temporary Password: ${password}`,
+    '',
+    'Please change password after first login.',
+  ].join('\n');
+
+  if (!process.env.SMTP_HOST) {
+    console.info('[VendorBridge] Vendor credentials created:', {
+      email: recipient,
+      companyName: companyName || null,
+      temporaryPassword: password,
+    });
+    return { delivered: false, mode: 'console', email: recipient, temporaryPassword: password };
+  }
+
+  try {
+    const transporter = createTransporter();
+    const info = await transporter.sendMail({
+      from: getFromAddress(),
+      to: recipient,
+      subject,
+      text,
+      html: `
+        <p>Your account has been created.</p>
+        <p><strong>Email:</strong> ${recipient}</p>
+        <p><strong>Temporary Password:</strong> ${password}</p>
+        <p>Please change password after first login.</p>
+      `,
+    });
+
+    return {
+      delivered: true,
+      mode: 'email',
+      email: recipient,
+      messageId: info.messageId || null,
+    };
+  } catch (error) {
+    console.info('[VendorBridge] SMTP delivery failed; logging vendor credentials instead.', {
+      email: recipient,
+      companyName: companyName || null,
+      temporaryPassword: password,
+      error: error.message,
+    });
+
+    return { delivered: false, mode: 'console', email: recipient, temporaryPassword: password };
+  }
 }
 
 async function sendInvoiceEmail(payload, actor) {
@@ -116,6 +172,7 @@ async function sendPurchaseOrderEmail(payload, actor) {
 }
 
 module.exports = {
+  sendVendorCredentialsEmail,
   sendInvoiceEmail,
   sendPurchaseOrderEmail,
 };

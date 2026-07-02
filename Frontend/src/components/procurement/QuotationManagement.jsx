@@ -32,9 +32,12 @@ export default function QuotationManagement({ initialQuotations, rfqs, onAddLog,
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const data = await response.json();
-      if (response.ok && data.success && data.data) {
+      if (response.ok && data.success) {
         // Mapped quotations
-        setQuotations(data.data);
+        const list = data.quotations || data.data?.quotations || data.data || [];
+        if (Array.isArray(list)) {
+          setQuotations(list);
+        }
       }
     } catch (err) {
       console.warn("Failed to reload quotations", err);

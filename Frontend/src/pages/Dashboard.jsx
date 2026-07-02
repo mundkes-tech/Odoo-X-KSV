@@ -44,114 +44,6 @@ import VendorNotifications from '../components/vendor/VendorNotifications';
 // VendorActivityLogs removed from imports: vendors must not access activity logs per RBAC
 import VendorProfile from '../components/vendor/VendorProfile';
 
-// --- INITIAL SEED DATABASES (FALLBACKS) ---
-const INITIAL_USERS = [
-  {
-    id: '1',
-    full_name: 'Sujal Vasara',
-    email: 'vasarasujal.cg@gmail.com',
-    role: 'ADMIN',
-    is_active: true,
-    created_at: '2026-01-01T00:00:00Z',
-    phone: '+91 98765 43210',
-    rfqs_created: 0,
-    approvals_done: 0,
-    pos_generated: 0,
-    last_login: 'Today, 10:15 AM'
-  },
-  {
-    id: '2',
-    full_name: 'John Doe',
-    email: 'john@vendorbridge.com',
-    role: 'PROCUREMENT_OFFICER',
-    is_active: true,
-    created_at: '2026-02-15T00:00:00Z',
-    phone: '+91 99999 88888',
-    rfqs_created: 12,
-    approvals_done: 0,
-    pos_generated: 8,
-    last_login: 'Yesterday, 4:30 PM'
-  },
-  {
-    id: '3',
-    full_name: 'Sarah Smith',
-    email: 'sarah@vendorbridge.com',
-    role: 'MANAGER',
-    is_active: true,
-    created_at: '2026-03-10T00:00:00Z',
-    phone: '+91 98888 77777',
-    rfqs_created: 0,
-    approvals_done: 22,
-    pos_generated: 0,
-    last_login: 'Today, 8:45 AM'
-  }
-];
-
-const INITIAL_VENDORS = [
-  {
-    id: 'v1',
-    company_name: 'Acme Corporation',
-    gst_number: '27AAAAA1111A1Z1',
-    category: 'Manufacturing',
-    contact_person: 'John Acme',
-    email: 'contact@acme.com',
-    phone: '+91 98765 43210',
-    address: 'MIDC Phase II, Block G-4, Andheri East, Mumbai, Maharashtra',
-    status: 'ACTIVE',
-    created_at: '2026-01-10T00:00:00Z',
-    rfqs_participated: 15,
-    quotations_submitted: 12,
-    success_rate: 80,
-    rating: 4.8,
-    delivery_performance: 96,
-    procurement_value: 350000
-  },
-  {
-    id: 'v2',
-    company_name: 'Globex Corporation',
-    gst_number: '27BBBBB2222B2Z2',
-    category: 'Logistics',
-    contact_person: 'Alice Globex',
-    email: 'info@globex.com',
-    phone: '+91 98765 43211',
-    address: 'Sector 15, Industrial Estate, Gurugram, Haryana',
-    status: 'ACTIVE',
-    created_at: '2026-02-05T00:00:00Z',
-    rfqs_participated: 10,
-    quotations_submitted: 8,
-    success_rate: 62,
-    rating: 4.2,
-    delivery_performance: 89,
-    procurement_value: 120000
-  }
-];
-
-const INITIAL_RFQS = [
-  { id: 'RFQ-2026-001', title: 'Industrial Steel Supply', status: 'CLOSED', created_at: '2026-05-01', category: 'Manufacturing' },
-  { id: 'RFQ-2026-002', title: 'Office IT Equipment', status: 'OPEN', created_at: '2026-05-15', category: 'IT Services' },
-  { id: 'RFQ-2026-003', title: 'Warehouse Security Systems', status: 'PENDING', created_at: '2026-06-01', category: 'Security' }
-];
-
-const INITIAL_POS = [
-  { id: 'PO-2026-001', title: 'Steel Plates Order', amount: 150000, vendor: 'Acme Corporation', status: 'COMPLETED', created_at: '2026-05-10' },
-  { id: 'PO-2026-002', title: 'Laptops & Monitors', amount: 75000, vendor: 'Initech LLC', status: 'PENDING', created_at: '2026-05-22' }
-];
-
-const INITIAL_INVOICES = [
-  { id: 'INV-2026-001', amount: 150000, vendor: 'Acme Corporation', status: 'PAID', due_date: '2026-05-30', created_at: '2026-05-10' },
-  { id: 'INV-2026-002', amount: 75000, vendor: 'Initech LLC', status: 'PENDING', due_date: '2026-06-22', created_at: '2026-05-22' }
-];
-
-const INITIAL_LOGS = [
-  { id: 'l1', action: 'VENDOR_CREATED', description: 'Admin registered new vendor "Umbrella Corp"', user_name: 'Sujal Vasara', user_role: 'ADMIN', timestamp: '10:00 AM' },
-  { id: 'l2', action: 'RFQ_CREATED', description: 'Procurement Officer Created RFQ "RFQ-2026-003"', user_name: 'John Doe', user_role: 'PROCUREMENT_OFFICER', timestamp: '10:15 AM' }
-];
-
-const INITIAL_NOTIFICATIONS = [
-  { id: 'n1', type: 'RFQ_CREATED', message: 'RFQ-2026-003 "Warehouse Security Systems" has been created.', time: '10:15 AM', read: false },
-  { id: 'n2', type: 'VENDOR_ADDED', message: 'Vendor "Umbrella Corp" was registered by Admin.', time: '10:00 AM', read: false }
-];
-
 export default function Dashboard() {
   const { user, token, logout, API_BASE } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
@@ -163,29 +55,17 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState(isAdmin ? 'dashboard' : isManager ? 'manager-home' : isVendor ? 'vendor-home' : 'overview');
   const [selectedRfqForQuotation, setSelectedRfqForQuotation] = useState(null);
   const [vendorRfqs, setVendorRfqs] = useState([]);
-  const [users, setUsers] = useState(() => {
-    const cached = localStorage.getItem('vb_users');
-    return cached ? JSON.parse(cached) : INITIAL_USERS;
-  });
-  const [vendors, setVendors] = useState(() => {
-    const cached = localStorage.getItem('vb_vendors');
-    return cached ? JSON.parse(cached) : INITIAL_VENDORS;
-  });
-  const [rfqs, setRfqs] = useState(INITIAL_RFQS);
-  const [purchaseOrders, setPurchaseOrders] = useState(INITIAL_POS);
-  const [invoices, setInvoices] = useState(INITIAL_INVOICES);
+  const [users, setUsers] = useState([]);
+  const [vendors, setVendors] = useState([]);
+  const [rfqs, setRfqs] = useState([]);
+  const [purchaseOrders, setPurchaseOrders] = useState([]);
+  const [invoices, setInvoices] = useState([]);
   const [approvals, setApprovals] = useState([]);
   const [quotations, setQuotations] = useState([]);
-  
-  const [logs, setLogs] = useState(() => {
-    const cached = localStorage.getItem('vb_logs');
-    return cached ? JSON.parse(cached) : INITIAL_LOGS;
-  });
-  
-  const [notifications, setNotifications] = useState(() => {
-    const cached = localStorage.getItem('vb_notifications');
-    return cached ? JSON.parse(cached) : INITIAL_NOTIFICATIONS;
-  });
+
+  const [logs, setLogs] = useState([]);
+
+  const [notifications, setNotifications] = useState([]);
 
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
 
@@ -242,8 +122,8 @@ export default function Dashboard() {
     try {
       const res = await fetch(`${API_BASE}/purchase-orders`, { headers });
       const data = await res.json();
-      if (res.ok && data.success && data.data) {
-        const list = data.data.purchaseOrders || data.data;
+      if (res.ok && data.success) {
+        const list = data.data?.purchaseOrders || data.purchase_orders || data.data || [];
         if (Array.isArray(list)) {
           setPurchaseOrders(list.map(p => ({
             id: p.id,
@@ -362,16 +242,6 @@ export default function Dashboard() {
         }
       } catch (err) {
         console.warn("Failed to fetch vendor RFQs from backend", err);
-        // Fallback: try listing all RFQs (some may be visible)
-        try {
-          const res2 = await fetch(`${API_BASE}/rfqs`, { headers });
-          const data2 = await res2.json();
-          if (res2.ok && data2.success && data2.rfqs) {
-            setVendorRfqs(data2.rfqs);
-          }
-        } catch (err2) {
-          console.warn("Fallback RFQ fetch also failed", err2);
-        }
       }
     }
   };
@@ -381,23 +251,6 @@ export default function Dashboard() {
       loadAllData();
     }
   }, [token, isAdmin, isProcurementOfficer, isManager, isVendor]);
-
-  // Sync state to local storage when changed as backup
-  useEffect(() => {
-    localStorage.setItem('vb_users', JSON.stringify(users));
-  }, [users]);
-
-  useEffect(() => {
-    localStorage.setItem('vb_vendors', JSON.stringify(vendors));
-  }, [vendors]);
-
-  useEffect(() => {
-    localStorage.setItem('vb_logs', JSON.stringify(logs));
-  }, [logs]);
-
-  useEffect(() => {
-    localStorage.setItem('vb_notifications', JSON.stringify(notifications));
-  }, [notifications]);
 
   // --- MUTATORS WITH BACKEND SYNC ---
   const handleAddUser = (newUser) => {
@@ -425,11 +278,11 @@ export default function Dashboard() {
         handleAddLog('USER_UPDATED', `Admin updated user details: ${updatedUser.full_name}`);
         return;
       }
+      throw new Error(data.message || 'Failed to update user on backend.');
     } catch (err) {
-      console.warn("Failed to update user in backend, updating locally", err);
+      console.warn("Failed to update user in backend", err);
+      alert(err.message || 'Failed to update user on backend.');
     }
-    setUsers(prev => prev.map(u => u.id === updatedUser.id ? updatedUser : u));
-    handleAddLog('USER_UPDATED', `Admin updated user details (Local): ${updatedUser.full_name}`);
   };
 
   const handleResetPassword = async (userObj, password) => {
@@ -448,10 +301,11 @@ export default function Dashboard() {
         handleAddLog('USER_PASSWORD_RESET', `Admin reset password for user: ${userObj.full_name}`);
         return;
       }
+      throw new Error(data.message || 'Failed to reset password on backend.');
     } catch (err) {
       console.warn("Failed to reset password on backend", err);
+      alert(err.message || 'Failed to reset password on backend.');
     }
-    alert(`Password updated failed on backend. (Simulated complete)`);
   };
 
   const handleSyncVendors = (backendVendors) => {
@@ -669,6 +523,7 @@ export default function Dashboard() {
                 <>
                   {[
                     { id: 'overview', name: 'Dashboard', icon: Layers },
+                    { id: 'vendors', name: 'Vendors', icon: ShieldCheck },
                     { id: 'rfqs', name: 'RFQs & Tenders', icon: FileText },
                     { id: 'quotations', name: 'Quotations', icon: BarChart3 },
                     { id: 'approvals', name: 'Approvals', icon: CheckSquare },
@@ -839,6 +694,17 @@ export default function Dashboard() {
                 onUpdateVendor={handleUpdateVendor} 
                 onDeleteVendor={handleDeleteVendor} 
                 onAddLog={handleAddLog} 
+              />
+            )}
+
+            {isProcurementOfficer && activeTab === 'vendors' && (
+              <VendorManagement 
+                vendors={vendors}
+                onSyncVendors={handleSyncVendors}
+                onAddVendor={handleAddVendor}
+                onUpdateVendor={handleUpdateVendor}
+                onDeleteVendor={handleDeleteVendor}
+                onAddLog={handleAddLog}
               />
             )}
 

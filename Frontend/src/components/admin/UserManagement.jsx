@@ -455,7 +455,6 @@ export default function UserManagement({ users, onAddUser, onUpdateUser, onReset
                   >
                     <option value="PROCUREMENT_OFFICER">Procurement Officer</option>
                     <option value="MANAGER">Manager</option>
-                    <option value="VENDOR">Vendor</option>
                     <option value="ADMIN">Admin</option>
                   </select>
                 </div>

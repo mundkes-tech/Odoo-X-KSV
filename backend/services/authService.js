@@ -3,7 +3,9 @@ const jwt = require('jsonwebtoken');
 const { pool } = require('../config/db');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const ALLOWED_ROLES = ['ADMIN', 'PROCUREMENT_OFFICER', 'VENDOR', 'MANAGER'];
+const PUBLIC_ALLOWED_ROLES = ['ADMIN', 'PROCUREMENT_OFFICER', 'MANAGER'];
+const INTERNAL_ALLOWED_ROLES = [...PUBLIC_ALLOWED_ROLES, 'VENDOR'];
+const DEFAULT_VENDOR_TEMP_PASSWORD = process.env.VENDOR_TEMP_PASSWORD || 'Vendor@123';
 const SALT_ROUNDS = Number(process.env.BCRYPT_SALT_ROUNDS) || 10;
 const JWT_EXPIRES_IN = process.env.JWT_EXPIRES_IN || '1d';
 
@@ -23,13 +25,14 @@ function sanitizeUserRow(userRow) {
     full_name: userRow.full_name,
     email: userRow.email,
     role: userRow.role,
+    vendor_id: userRow.vendor_id || null,
     is_active: userRow.is_active,
     created_at: userRow.created_at,
     updated_at: userRow.updated_at,
   };
 }
 
-function validateRegisterInput({ full_name, email, password, role }) {
+function validateRegisterInput({ full_name, email, password, role }, allowedRoles = PUBLIC_ALLOWED_ROLES) {
   if (!full_name || !String(full_name).trim()) {
     throw createHttpError(400, 'full_name is required.');
   }
@@ -52,8 +55,12 @@ function validateRegisterInput({ full_name, email, password, role }) {
 
   const normalizedRole = String(role).trim().toUpperCase();
 
-  if (!ALLOWED_ROLES.includes(normalizedRole)) {
-    throw createHttpError(400, `role must be one of: ${ALLOWED_ROLES.join(', ')}.`);
+  if (normalizedRole === 'VENDOR' && !allowedRoles.includes('VENDOR')) {
+    throw createHttpError(400, 'Vendor accounts must be created through Vendor Management.');
+  }
+
+  if (!allowedRoles.includes(normalizedRole)) {
+    throw createHttpError(400, `role must be one of: ${allowedRoles.join(', ')}.`);
   }
 
   return {
@@ -62,6 +69,34 @@ function validateRegisterInput({ full_name, email, password, role }) {
     password: String(password),
     role: normalizedRole,
   };
+}
+
+async function createUserAccount(payload, options = {}) {
+  const allowedRoles = options.allowedRoles || INTERNAL_ALLOWED_ROLES;
+  const vendorId = options.vendorId || null;
+  const isActive = options.isActive !== undefined ? Boolean(options.isActive) : true;
+  const db = options.client || pool;
+
+  const { full_name, email, password, role } = validateRegisterInput(payload, allowedRoles);
+
+  const existingUser = await db.query('SELECT id FROM users WHERE email = $1 LIMIT 1;', [email]);
+
+  if (existingUser.rowCount > 0) {
+    throw createHttpError(409, 'A user with this email already exists.');
+  }
+
+  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
+
+  const insertResult = await db.query(
+    `
+      INSERT INTO users (full_name, email, password_hash, role, vendor_id, is_active)
+      VALUES ($1, $2, $3, $4, $5, $6)
+      RETURNING id, full_name, email, role, vendor_id, is_active, created_at, updated_at;
+    `,
+    [full_name, email, passwordHash, role, vendorId, isActive]
+  );
+
+  return insertResult.rows[0];
 }
 
 function validateLoginInput({ email, password }) {
@@ -84,26 +119,8 @@ function validateLoginInput({ email, password }) {
 }
 
 async function registerUser(payload) {
-  const { full_name, email, password, role } = validateRegisterInput(payload);
-
-  const existingUser = await pool.query('SELECT id FROM users WHERE email = $1 LIMIT 1;', [email]);
-
-  if (existingUser.rowCount > 0) {
-    throw createHttpError(409, 'A user with this email already exists.');
-  }
-
-  const passwordHash = await bcrypt.hash(password, SALT_ROUNDS);
-
-  const insertResult = await pool.query(
-    `
-      INSERT INTO users (full_name, email, password_hash, role)
-      VALUES ($1, $2, $3, $4)
-      RETURNING id, full_name, email, role, is_active, created_at, updated_at;
-    `,
-    [full_name, email, passwordHash, role]
-  );
-
-  return sanitizeUserRow(insertResult.rows[0]);
+  const user = await createUserAccount(payload, { allowedRoles: PUBLIC_ALLOWED_ROLES, isActive: true });
+  return sanitizeUserRow(user);
 }
 
 async function loginUser(payload) {
@@ -111,7 +128,7 @@ async function loginUser(payload) {
 
   const userResult = await pool.query(
     `
-      SELECT id, full_name, email, password_hash, role, is_active, created_at, updated_at
+      SELECT id, full_name, email, password_hash, role, vendor_id, is_active, created_at, updated_at
       FROM users
       WHERE email = $1
       LIMIT 1;
@@ -156,7 +173,7 @@ async function loginUser(payload) {
 async function getUserProfileById(userId) {
   const userResult = await pool.query(
     `
-      SELECT id, full_name, email, role, is_active, created_at, updated_at
+      SELECT id, full_name, email, role, vendor_id, is_active, created_at, updated_at
       FROM users
       WHERE id = $1
       LIMIT 1;
@@ -179,7 +196,7 @@ async function getUserProfileById(userId) {
 
 async function getAllUsers() {
   const result = await pool.query(
-    `SELECT id, full_name, email, role, is_active, created_at, updated_at FROM users ORDER BY created_at DESC;`
+    `SELECT id, full_name, email, role, vendor_id, is_active, created_at, updated_at FROM users ORDER BY created_at DESC;`
   );
   return result.rows.map(sanitizeUserRow);
 }
@@ -194,7 +211,7 @@ async function updateUserById(userId, payload) {
          is_active = COALESCE($5, is_active),
          updated_at = NOW()
      WHERE id = $1
-     RETURNING id, full_name, email, role, is_active, created_at, updated_at;`,
+     RETURNING id, full_name, email, role, vendor_id, is_active, created_at, updated_at;`,
     [userId, full_name, email, role, is_active]
   );
   if (result.rowCount === 0) {
@@ -216,9 +233,12 @@ async function resetUserPasswordById(userId, newPassword) {
 }
 
 module.exports = {
-  ALLOWED_ROLES,
+  PUBLIC_ALLOWED_ROLES,
+  INTERNAL_ALLOWED_ROLES,
+  DEFAULT_VENDOR_TEMP_PASSWORD,
   createHttpError,
   sanitizeUserRow,
+  createUserAccount,
   registerUser,
   loginUser,
   getUserProfileById,
